@@ -12,26 +12,108 @@ const formatHours = (minutes) => {
   return (minutes / 60).toFixed(2).replace(/\.00$/, "");
 };
 
-const normalizeTaskText = (name, hours, status) => {
-  let line = `・${name}`;
-  if (hours !== "" && !isNaN(hours)) {
-    line += `（${parseFloat(hours)}h）`;
-    if (status) {
-      line += `（${status}`;
+/** 実働・休憩など日報用の時間表記（整数時間は小数なし） */
+const formatHoursForReport = (minutes) => {
+  if (minutes <= 0) return "0";
+  const h = minutes / 60;
+  if (Number.isInteger(h)) return String(h);
+  const s = h.toFixed(1).replace(/\.0$/, "");
+  return s;
+};
+
+/** YYYY-MM-DD → 05月18日（先頭ゼロ付き） */
+const formatReportDateLabel = (dateString) => {
+  const [, month, day] = dateString.split("-");
+  return `${month ?? ""}月${day ?? ""}日`;
+};
+
+const getWeekday = (dateString) => {
+  const date = new Date(dateString + "T12:00:00");
+  return WEEKDAYS[date.getDay()];
+};
+
+const createEmptyChild = () => ({
+  id: crypto.randomUUID(),
+  name: "",
+  hours: "",
+  status: "",
+});
+
+const createEmptyTask = () => ({
+  id: crypto.randomUUID(),
+  name: "",
+  hours: "",
+  hoursManual: false,
+  progress: "",
+  children: [createEmptyChild()],
+});
+
+const sumChildHours = (children) =>
+  children.reduce((sum, child) => {
+    if (child.hours === "" || child.hours == null) return sum;
+    const n = parseFloat(child.hours);
+    return Number.isNaN(n) ? sum : sum + n;
+  }, 0);
+
+const formatHoursValue = (n) => {
+  if (Number.isInteger(n)) return String(n);
+  return String(n).replace(/\.0+$/, "");
+};
+
+const hoursSumToInput = (sum) => (sum > 0 ? formatHoursValue(sum) : "");
+
+/** 手入力でないとき、親の時間を子の合計で同期する */
+const applyAutoParentHours = (task) => {
+  if (task.hoursManual) return task;
+  return { ...task, hours: hoursSumToInput(sumChildHours(task.children)) };
+};
+
+const getParentHoursValue = (task) => {
+  if (task.hoursManual) {
+    const n = parseFloat(task.hours);
+    return Number.isNaN(n) ? 0 : n;
+  }
+  const sum = sumChildHours(task.children);
+  if (sum > 0) return sum;
+  const n = parseFloat(task.hours);
+  return Number.isNaN(n) ? 0 : n;
+};
+
+const formatParentHoursPart = (totalHours) => {
+  if (!totalHours || totalHours <= 0) return "";
+  return `（${formatHoursValue(totalHours)}h）`;
+};
+
+const formatProgressPart = (progress) => {
+  const p = progress?.trim();
+  if (!p) return "";
+  return `（進捗：${p}）`;
+};
+
+const formatChildLine = (child) => {
+  let line = `　■ ${child.name?.trim() || "未入力"}`;
+  if (child.hours !== "" && child.hours != null) {
+    const n = parseFloat(child.hours);
+    if (!Number.isNaN(n)) {
+      line += `（${formatHoursValue(n)}h）`;
     }
-    line += `）`;
-  } else if (status) {
-    line += `（${status}）`;
+  }
+  if (child.status?.trim()) {
+    line += `（${child.status.trim()}）`;
   }
   return line;
 };
 
-const getWeekday = (dateString) => {
-  const date = new Date(dateString);
-  return WEEKDAYS[date.getDay()];
-};
+const childIsFilled = (c) =>
+  Boolean(c.name?.trim() || c.hours || c.status?.trim());
 
-const createEmptyTask = () => ({ id: crypto.randomUUID(), name: "", hours: "", status: "" });
+const taskIsFilled = (task) =>
+  Boolean(
+    task.name?.trim() ||
+    task.hours ||
+    task.progress?.trim() ||
+    task.children?.some(childIsFilled),
+  );
 
 export default function App() {
   const today = new Date().toISOString().slice(0, 10);
@@ -65,6 +147,65 @@ export default function App() {
     );
   };
 
+  const updateTaskHours = (id, value) => {
+    setTasks((current) =>
+      current.map((task) =>
+        task.id === id ? { ...task, hours: value, hoursManual: true } : task,
+      ),
+    );
+  };
+
+  const resetTaskHoursToAuto = (id) => {
+    setTasks((current) =>
+      current.map((task) => {
+        if (task.id !== id) return task;
+        return applyAutoParentHours({ ...task, hoursManual: false });
+      }),
+    );
+  };
+
+  const updateChild = (taskId, childId, field, value) => {
+    setTasks((current) =>
+      current.map((task) => {
+        if (task.id !== taskId) return task;
+        const next = {
+          ...task,
+          children: task.children.map((c) =>
+            c.id === childId ? { ...c, [field]: value } : c,
+          ),
+        };
+        return applyAutoParentHours(next);
+      }),
+    );
+  };
+
+  const addChild = (taskId) => {
+    setTasks((current) =>
+      current.map((task) =>
+        task.id !== taskId
+          ? task
+          : applyAutoParentHours({
+              ...task,
+              children: [...task.children, createEmptyChild()],
+            }),
+      ),
+    );
+  };
+
+  const removeChild = (taskId, childId) => {
+    setTasks((current) =>
+      current.map((task) => {
+        if (task.id !== taskId) return task;
+        const next = task.children.filter((c) => c.id !== childId);
+        const updated = {
+          ...task,
+          children: next.length > 0 ? next : [createEmptyChild()],
+        };
+        return applyAutoParentHours(updated);
+      }),
+    );
+  };
+
   const addTask = () => {
     setTasks((current) => [...current, createEmptyTask()]);
   };
@@ -74,30 +215,42 @@ export default function App() {
   };
 
   const generateReport = () => {
-    const validTasks = tasks.filter((task) => task.name || task.hours || task.status);
+    const validTasks = tasks.filter(taskIsFilled);
     if (validTasks.length === 0) {
       alert("少なくとも1つの稼働内容を入力してください。");
       return;
     }
 
-    const header = `【稼働終了報告 ${date.slice(5).replace("-", "月")}日(${getWeekday(date)})】`;
+    const dateLabel = formatReportDateLabel(date);
+    const header = `【稼働終了報告 ${dateLabel}(${getWeekday(date)})】`;
+    const actualWork = formatHoursForReport(workMinutes);
+
     const lines = [
       header,
       "お疲れ様です。",
       "本日の稼働を終了します。",
-      `・稼働時間　${startTime}～${endTime}（実働${workTime}時間）`,
+      "",
+      "【稼働】",
+      `・稼働時間　${startTime}～${endTime}（実働${actualWork}時間）`,
     ];
 
     const breakStartMin = parseTime(breakStart);
     const breakEndMin = parseTime(breakEnd);
     if (breakStart && breakEnd && breakEndMin > breakStartMin) {
-      const breakHours = formatHours(breakEndMin - breakStartMin);
-      lines.push(`・休憩時間　${breakStart}～${breakEnd}（${breakHours}h）`);
+      const breakMins = breakEndMin - breakStartMin;
+      const breakH = formatHoursForReport(breakMins);
+      lines.push(`・休憩時間　${breakStart}～${breakEnd}（${breakH}h）`);
     }
 
-    lines.push("", "【稼動内容】");
+    lines.push("", "【内容】");
+
     validTasks.forEach((task) => {
-      lines.push(normalizeTaskText(task.name || "未入力", task.hours || "", task.status || ""));
+      const parentHours = getParentHoursValue(task);
+      const parentLine = `● ${task.name?.trim() || "未入力"}${formatParentHoursPart(parentHours)}${formatProgressPart(task.progress)}`;
+      lines.push(parentLine);
+      task.children.filter(childIsFilled).forEach((child) => {
+        lines.push(formatChildLine(child));
+      });
     });
 
     setOutput(lines.join("\n"));
@@ -123,30 +276,59 @@ export default function App() {
   return (
     <div className="container">
       <h1>日報作成ツール</h1>
-      
+
       <div className="wrap">
         <div className="main">
           <section className="panel">
             <h2>基本情報</h2>
             <div className="field-row">
               <label htmlFor="report-date">日付</label>
-              <input id="report-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <input
+                id="report-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
             </div>
             <div className="field-row">
               <label htmlFor="start-time">開始</label>
-              <input id="start-time" type="time" step="900" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              <input
+                id="start-time"
+                type="time"
+                step="900"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
             </div>
             <div className="field-row">
               <label htmlFor="end-time">終了</label>
-              <input id="end-time" type="time" step="900" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+              <input
+                id="end-time"
+                type="time"
+                step="900"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+              />
             </div>
             <div className="field-row">
               <label htmlFor="break-start">休憩開始</label>
-              <input id="break-start" type="time" step="900" value={breakStart} onChange={(e) => setBreakStart(e.target.value)} />
+              <input
+                id="break-start"
+                type="time"
+                step="900"
+                value={breakStart}
+                onChange={(e) => setBreakStart(e.target.value)}
+              />
             </div>
             <div className="field-row">
               <label htmlFor="break-end">休憩終了</label>
-              <input id="break-end" type="time" step="900" value={breakEnd} onChange={(e) => setBreakEnd(e.target.value)} />
+              <input
+                id="break-end"
+                type="time"
+                step="900"
+                value={breakEnd}
+                onChange={(e) => setBreakEnd(e.target.value)}
+              />
             </div>
             <div className="field-row note-row">
               <label>実働時間</label>
@@ -156,41 +338,141 @@ export default function App() {
 
           <section className="panel">
             <h2>稼働内容</h2>
+            <p className="panel-hint">
+              親行は ●、子行は ■
+              で出力されます。親の時間は子があるとき子の合計が自動入力されます（直接編集で上書き可）。進捗は入力したときだけ（進捗：…）が付きます。
+            </p>
             <div id="tasks" className="tasks">
-              {tasks.map((task) => (
-                <div key={task.id} className="task">
-                  <div className="task-row">
-                    <input
-                      type="text"
-                      className="task-name"
-                      placeholder="タスク名"
-                      value={task.name}
-                      onChange={(e) => updateTask(task.id, "name", e.target.value)}
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.25"
-                      className="task-hours"
-                      placeholder="かかった時間"
-                      value={task.hours}
-                      onChange={(e) => updateTask(task.id, "hours", e.target.value)}
-                    />
-                    <input
-                      type="text"
-                      className="task-status"
-                      placeholder="進捗 or 状況"
-                      value={task.status}
-                      onChange={(e) => updateTask(task.id, "status", e.target.value)}
-                    />
+              {tasks.map((task) => {
+                const childSum = sumChildHours(task.children);
+                return (
+                  <div key={task.id} className="task">
+                    <div className="task-actions">
+                      <button
+                        type="button"
+                        onClick={() => removeTask(task.id)}
+                        aria-label="このブロックを削除"
+                      >
+                        ー
+                      </button>
+                    </div>
+                    <div className="task-row task-row-parent">
+                      <input
+                        type="text"
+                        className="task-name"
+                        placeholder="親タスク名（例: mtg）"
+                        value={task.name}
+                        onChange={(e) =>
+                          updateTask(task.id, "name", e.target.value)
+                        }
+                      />
+                      <div className="task-hours-wrap">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.25"
+                          className={`task-hours${!task.hoursManual && childSum > 0 ? " task-hours--auto" : ""}`}
+                          placeholder="親の時間(h)"
+                          title={
+                            !task.hoursManual && childSum > 0
+                              ? "子タスクの合計（自動）"
+                              : "親の時間を直接入力"
+                          }
+                          value={task.hours}
+                          onChange={(e) =>
+                            updateTaskHours(task.id, e.target.value)
+                          }
+                        />
+                        {task.hoursManual && childSum > 0 && (
+                          <button
+                            type="button"
+                            className="hours-reset-auto"
+                            onClick={() => resetTaskHoursToAuto(task.id)}
+                            title="子の合計に戻す"
+                          >
+                            自動
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        className="task-progress"
+                        placeholder="進捗（例: 10P/57P）"
+                        value={task.progress}
+                        onChange={(e) =>
+                          updateTask(task.id, "progress", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="task-children">
+                      <div className="task-children-head">子タスク（■）</div>
+                      {task.children.map((child) => (
+                        <div key={child.id} className="task-row task-row-child">
+                          <input
+                            type="text"
+                            className="task-name"
+                            placeholder="内容"
+                            value={child.name}
+                            onChange={(e) =>
+                              updateChild(
+                                task.id,
+                                child.id,
+                                "name",
+                                e.target.value,
+                              )
+                            }
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.25"
+                            className="task-hours"
+                            placeholder="時間(h)"
+                            value={child.hours}
+                            onChange={(e) =>
+                              updateChild(
+                                task.id,
+                                child.id,
+                                "hours",
+                                e.target.value,
+                              )
+                            }
+                          />
+                          <input
+                            type="text"
+                            className="task-status"
+                            placeholder="状況（例: 完了）"
+                            value={child.status}
+                            onChange={(e) =>
+                              updateChild(
+                                task.id,
+                                child.id,
+                                "status",
+                                e.target.value,
+                              )
+                            }
+                          />
+                          <button
+                            type="button"
+                            className="child-remove"
+                            onClick={() => removeChild(task.id, child.id)}
+                            aria-label="子タスクを削除"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        className="secondary child-add"
+                        onClick={() => addChild(task.id)}
+                      >
+                        子タスクを追加
+                      </button>
+                    </div>
                   </div>
-                  <div className="task-actions">
-                    <button type="button" onClick={() => removeTask(task.id)}>
-                      ー
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="add_task">
               <button type="button" className="secondary" onClick={addTask}>
@@ -209,10 +491,13 @@ export default function App() {
               コピー
             </button>
           </div>
-          <textarea readOnly value={output} placeholder="ここに日報が表示されます" />
+          <textarea
+            readOnly
+            value={output}
+            placeholder="ここに日報が表示されます"
+          />
         </section>
       </div>
-
     </div>
   );
 }
