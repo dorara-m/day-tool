@@ -86,6 +86,16 @@ textarea {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.tasks-total {
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
+.tasks-total--warning span {
+  color: #ff6b6b;
+  font-weight: 600;
+}
+
 button {
   cursor: pointer;
   border: none;

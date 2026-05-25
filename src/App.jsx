@@ -141,6 +141,13 @@ export default function App() {
 
   const workTime = formatHours(workMinutes);
 
+  const totalTasksHours = useMemo(
+    () => tasks.reduce((sum, task) => sum + getParentHoursValue(task), 0),
+    [tasks],
+  );
+
+  const isEightHours = Math.abs(totalTasksHours - 8) < 0.01;
+
   const updateTask = (id, field, value) => {
     setTasks((current) =>
       current.map((task) => (task.id === id ? { ...task, [field]: value } : task))
@@ -472,6 +479,14 @@ export default function App() {
                   </div>
                 );
               })}
+            </div>
+            <div
+              className={`field-row note-row tasks-total${!isEightHours ? " tasks-total--warning" : ""}`}
+            >
+              <label>タスク合計</label>
+              <span>
+                {formatHoursValue(totalTasksHours)}h / 8h
+              </span>
             </div>
             <div className="add_task">
               <button type="button" className="secondary" onClick={addTask}>
