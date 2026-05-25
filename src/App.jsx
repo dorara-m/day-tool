@@ -347,7 +347,7 @@ export default function App() {
                 const childSum = sumChildHours(task.children);
                 return (
                   <div key={task.id} className="task">
-                    <div className="task-actions">
+                    <div className="task-remove">
                       <button
                         type="button"
                         onClick={() => removeTask(task.id)}
@@ -360,7 +360,7 @@ export default function App() {
                       <input
                         type="text"
                         className="task-name"
-                        placeholder="親タスク名（例: mtg）"
+                        placeholder="親タスク名（ex: 案件B）"
                         value={task.name}
                         onChange={(e) =>
                           updateTask(task.id, "name", e.target.value)
@@ -397,7 +397,7 @@ export default function App() {
                       <input
                         type="text"
                         className="task-progress"
-                        placeholder="進捗（例: 10P/57P）"
+                        placeholder="進捗（ex: 10P/57P）"
                         value={task.progress}
                         onChange={(e) =>
                           updateTask(task.id, "progress", e.target.value)
@@ -405,13 +405,12 @@ export default function App() {
                       />
                     </div>
                     <div className="task-children">
-                      <div className="task-children-head">子タスク（■）</div>
                       {task.children.map((child) => (
                         <div key={child.id} className="task-row task-row-child">
                           <input
                             type="text"
                             className="task-name"
-                            placeholder="内容"
+                            placeholder="小タスク名（ex. ページA）"
                             value={child.name}
                             onChange={(e) =>
                               updateChild(
@@ -441,7 +440,7 @@ export default function App() {
                           <input
                             type="text"
                             className="task-status"
-                            placeholder="状況（例: 完了）"
+                            placeholder="状況（ex: 完了）"
                             value={child.status}
                             onChange={(e) =>
                               updateChild(
@@ -494,7 +493,7 @@ export default function App() {
           <textarea
             readOnly
             value={output}
-            placeholder="ここに日報が表示されます"
+            placeholder="ここに日報が生成されます"
           />
         </section>
       </div>
