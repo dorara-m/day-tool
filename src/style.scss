@@ -35,15 +35,16 @@ h1 {
   margin-bottom: 18px;
 }
 
-.wrap {
+.inputArea {
   display: grid;
-  grid-template-columns: 1fr 350px;
-  gap: 24px;
+  grid-template-columns: 300px 1fr;
+  gap: 16px;
 }
 
-.side {
+.result {
   .btns {
     display: flex;
+    justify-content: center;
     gap: 12px;
   }
   textarea {
@@ -228,10 +229,14 @@ button {
   border: 1px solid rgba(255, 120, 120, 0.25) !important;
 }
 
+.secondary_add {
+  display: flex;
+  justify-content: center;
+}
+
 .child-add {
-  margin-top: 4px;
   max-width: 130px;
-  padding: 8px 15px;
+  padding: 4px 10px;
 }
 
 
