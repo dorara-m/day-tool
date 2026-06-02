@@ -8,6 +8,26 @@ const parseTime = (value) => {
   return hour * 60 + minute;
 };
 
+const QUARTER_HOUR_OPTIONS = Array.from({ length: 96 }, (_, index) => {
+  const totalMinutes = index * 15;
+  const hour = Math.floor(totalMinutes / 60)
+    .toString()
+    .padStart(2, "0");
+  const minute = (totalMinutes % 60).toString().padStart(2, "0");
+  return `${hour}:${minute}`;
+});
+
+const getNearbyQuarterHourOptions = (time, spanMinutes = 120) => {
+  const center = parseTime(time);
+  if (center == null) return QUARTER_HOUR_OPTIONS;
+  const min = Math.max(0, center - spanMinutes);
+  const max = Math.min(23 * 60 + 45, center + spanMinutes);
+  return QUARTER_HOUR_OPTIONS.filter((option) => {
+    const mins = parseTime(option);
+    return mins != null && mins >= min && mins <= max;
+  });
+};
+
 const formatHours = (minutes) => {
   return (minutes / 60).toFixed(2).replace(/\.00$/, "");
 };
@@ -17,8 +37,7 @@ const formatHoursForReport = (minutes) => {
   if (minutes <= 0) return "0";
   const h = minutes / 60;
   if (Number.isInteger(h)) return String(h);
-  const s = h.toFixed(1).replace(/\.0$/, "");
-  return s;
+  return h.toFixed(2).replace(/\.?0+$/, "");
 };
 
 /** YYYY-MM-DD → 05月18日（先頭ゼロ付き） */
@@ -124,6 +143,13 @@ export default function App() {
   const [breakEnd, setBreakEnd] = useState("14:00");
   const [tasks, setTasks] = useState([createEmptyTask(), createEmptyTask()]);
   const [output, setOutput] = useState("");
+  const startTimeOptions = useMemo(() => getNearbyQuarterHourOptions(startTime), [startTime]);
+  const endTimeOptions = useMemo(() => getNearbyQuarterHourOptions(endTime), [endTime]);
+  const breakStartOptions = useMemo(
+    () => getNearbyQuarterHourOptions(breakStart),
+    [breakStart],
+  );
+  const breakEndOptions = useMemo(() => getNearbyQuarterHourOptions(breakEnd), [breakEnd]);
 
   const workMinutes = useMemo(() => {
     const start = parseTime(startTime);
@@ -297,43 +323,51 @@ export default function App() {
           </div>
           <div className="field-row">
             <label htmlFor="start-time">開始</label>
-            <input
+            <select
               id="start-time"
-              type="time"
-              step="900"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-            />
+            >
+              {startTimeOptions.map((time) => (
+                <option key={time} value={time}>
+                  {time}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="field-row">
             <label htmlFor="end-time">終了</label>
-            <input
-              id="end-time"
-              type="time"
-              step="900"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-            />
+            <select id="end-time" value={endTime} onChange={(e) => setEndTime(e.target.value)}>
+              {endTimeOptions.map((time) => (
+                <option key={time} value={time}>
+                  {time}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="field-row">
             <label htmlFor="break-start">休憩開始</label>
-            <input
+            <select
               id="break-start"
-              type="time"
-              step="900"
               value={breakStart}
               onChange={(e) => setBreakStart(e.target.value)}
-            />
+            >
+              {breakStartOptions.map((time) => (
+                <option key={time} value={time}>
+                  {time}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="field-row">
             <label htmlFor="break-end">休憩終了</label>
-            <input
-              id="break-end"
-              type="time"
-              step="900"
-              value={breakEnd}
-              onChange={(e) => setBreakEnd(e.target.value)}
-            />
+            <select id="break-end" value={breakEnd} onChange={(e) => setBreakEnd(e.target.value)}>
+              {breakEndOptions.map((time) => (
+                <option key={time} value={time}>
+                  {time}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="field-row note-row">
             <label>実働時間</label>
