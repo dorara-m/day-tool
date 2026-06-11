@@ -141,6 +141,7 @@ export default function App() {
   const [endTime, setEndTime] = useState("19:00");
   const [breakStart, setBreakStart] = useState("13:00");
   const [breakEnd, setBreakEnd] = useState("14:00");
+  const [isRemote, setIsRemote] = useState(false);
   const [tasks, setTasks] = useState([createEmptyTask(), createEmptyTask()]);
   const [output, setOutput] = useState("");
   const startTimeOptions = useMemo(() => getNearbyQuarterHourOptions(startTime), [startTime]);
@@ -274,6 +275,9 @@ export default function App() {
       const breakH = formatHoursForReport(breakMins);
       lines.push(`・休憩時間　${breakStart}～${breakEnd}（${breakH}h）`);
     }
+    if (isRemote) {
+      lines.push("・勤務形態　在宅");
+    }
 
     lines.push("", "【内容】");
 
@@ -372,6 +376,15 @@ export default function App() {
           <div className="field-row note-row">
             <label>実働時間</label>
             <span>{workTime}h</span>
+          </div>
+          <div className="field-row">
+            <label htmlFor="is-remote">在宅</label>
+            <input
+              id="is-remote"
+              type="checkbox"
+              checked={isRemote}
+              onChange={(e) => setIsRemote(e.target.checked)}
+            />
           </div>
         </section>
 
