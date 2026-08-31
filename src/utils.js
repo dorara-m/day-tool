@@ -71,3 +71,11 @@ export const saveState = (key, value) => {
     // 保存できない環境（プライベートモード等）では諦める
   }
 };
+
+export const clearState = (key) => {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // 保存できない環境（プライベートモード等）では諦める
+  }
+};

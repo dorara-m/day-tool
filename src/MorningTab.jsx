@@ -14,7 +14,8 @@ import {
 import GroupsPanel from "./GroupsPanel";
 import MeetingsPanel from "./MeetingsPanel";
 
-const STORAGE_KEY = "dayTool.morning";
+export const MORNING_STORAGE_KEY = "dayTool.morning";
+const STORAGE_KEY = MORNING_STORAGE_KEY;
 
 export default function MorningTab() {
   const [initial] = useState(() => loadState(STORAGE_KEY, {}));

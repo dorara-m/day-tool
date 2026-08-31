@@ -23,9 +23,10 @@ import {
 } from "./planUtils";
 import GroupsPanel from "./GroupsPanel";
 import MeetingsPanel from "./MeetingsPanel";
+import { MORNING_STORAGE_KEY } from "./MorningTab";
 
-const STORAGE_KEY = "dayTool.evening";
-const MORNING_STORAGE_KEY = "dayTool.morning";
+export const EVENING_STORAGE_KEY = "dayTool.evening";
+const STORAGE_KEY = EVENING_STORAGE_KEY;
 
 const createEmptyBreak = () => ({
   id: crypto.randomUUID(),

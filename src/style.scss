@@ -27,10 +27,23 @@ h1 {
   letter-spacing: -0.05em;
 }
 
+.tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.clear-all {
+  flex-shrink: 0;
+  color: #ffb4b4;
+  border-color: rgba(255, 120, 120, 0.25);
+}
+
 .tabs {
   display: flex;
   gap: 8px;
-  margin-bottom: 18px;
 }
 
 .tab-button {
