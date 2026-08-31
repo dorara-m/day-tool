@@ -27,6 +27,27 @@ h1 {
   letter-spacing: -0.05em;
 }
 
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.tab-button {
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(245, 245, 245, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-weight: 600;
+}
+
+.tab-button--active {
+  background: linear-gradient(135deg, #4a9dff, #6a6cff);
+  color: white;
+  border-color: transparent;
+}
+
 .panel {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -60,7 +81,7 @@ h1 {
 
 .field-row {
   display: grid;
-  grid-template-columns: 120px 1fr;
+  grid-template-columns: 150px 1fr;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
@@ -127,13 +148,13 @@ button {
 }
 
 .panel-hint {
-  margin: 0 0 14px;
+  margin-top: 14px;
   font-size: 0.875rem;
   line-height: 1.45;
   color: rgba(255, 255, 255, 0.72);
 }
 
-#tasks {
+.tasks {
   display: grid;
   gap: 12px;
 }
@@ -194,7 +215,7 @@ button {
     top: 50%;
     transform: translateY(-50%);
     right: -20px;
-    display: none;
+    display: flex;
     button {
       border-radius: 50%;
       padding: 0;
@@ -204,13 +225,10 @@ button {
       align-items: center;
       justify-content: center;
       font-size: 1.1rem;
-      background: rgba(255, 255, 255, 0.08);
-      color: #f5f5f5;
+      background: rgba(255, 80, 80, 0.15);
+      color: #ffb4b4;
+      border: 1px solid rgba(255, 120, 120, 0.25);
     }
-  }
-
-  &:hover .task-remove {
-    display: flex;
   }
 }
 
@@ -249,7 +267,103 @@ button {
   padding: 4px 10px;
 }
 
+.morning-group {
+  padding-top: 16px;
+}
 
+.morning-group-name {
+  display: block;
+  width: 100%;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.morning-tasks {
+  margin-top: 14px;
+  padding-top: 12px;
+  padding-left: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.morning-task {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+  padding-right: 30px;
+  position: relative;
+
+  &:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .child-remove {
+    position: absolute;
+    right: 0;
+    transform: translateX(50%);
+    top: 15px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}
+
+.morning-task-row1 {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 8px;
+  align-items: center;
+}
+
+.morning-task-row2 {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.progress-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+
+  .progress-input {
+    width: 70px;
+    min-width: 0;
+    padding: 10px 8px;
+    text-align: center;
+  }
+
+  span {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.85rem;
+  }
+}
+
+.meeting-row {
+  display: grid;
+  grid-template-columns: 100px auto 100px 1fr 40px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+
+  span {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
 
 textarea {
   min-height: 220px;
@@ -273,5 +387,15 @@ textarea {
   .child-remove {
     width: 100% !important;
     max-width: none;
+  }
+
+  .morning-task-row1,
+  .morning-task-row2,
+  .meeting-row {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-range {
+    justify-content: flex-start;
   }
 }
