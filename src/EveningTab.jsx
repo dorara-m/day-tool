@@ -10,86 +10,22 @@ import {
   parseTime,
   saveState,
 } from "./utils";
+import {
+  createEmptyPlanGroup,
+  createEmptyMeeting,
+  formatPlanTaskDetailLine,
+  formatPlanTaskScopeLine,
+  meetingIsFilled,
+  planGroupIsFilled,
+  planTaskIsFilled,
+  sumMeetingsHours,
+  sumPlanGroupsHours,
+} from "./planUtils";
+import GroupsPanel from "./GroupsPanel";
+import MeetingsPanel from "./MeetingsPanel";
 
 const STORAGE_KEY = "dayTool.evening";
-
-const createEmptyChild = () => ({
-  id: crypto.randomUUID(),
-  name: "",
-  hours: "",
-  status: "",
-});
-
-const createEmptyTask = () => ({
-  id: crypto.randomUUID(),
-  name: "",
-  hours: "",
-  hoursManual: false,
-  progress: "",
-  children: [createEmptyChild()],
-});
-
-const sumChildHours = (children) =>
-  children.reduce((sum, child) => {
-    if (child.hours === "" || child.hours == null) return sum;
-    const n = parseFloat(child.hours);
-    return Number.isNaN(n) ? sum : sum + n;
-  }, 0);
-
-const hoursSumToInput = (sum) => (sum > 0 ? formatHoursValue(sum) : "");
-
-/** 手入力でないとき、親の時間を子の合計で同期する */
-const applyAutoParentHours = (task) => {
-  if (task.hoursManual) return task;
-  return { ...task, hours: hoursSumToInput(sumChildHours(task.children)) };
-};
-
-const getParentHoursValue = (task) => {
-  if (task.hoursManual) {
-    const n = parseFloat(task.hours);
-    return Number.isNaN(n) ? 0 : n;
-  }
-  const sum = sumChildHours(task.children);
-  if (sum > 0) return sum;
-  const n = parseFloat(task.hours);
-  return Number.isNaN(n) ? 0 : n;
-};
-
-const formatParentHoursPart = (totalHours) => {
-  if (!totalHours || totalHours <= 0) return "";
-  return `（${formatHoursValue(totalHours)}h）`;
-};
-
-const formatProgressPart = (progress) => {
-  const p = progress?.trim();
-  if (!p) return "";
-  return `（進捗：${p}）`;
-};
-
-const formatChildLine = (child) => {
-  let line = `　■ ${child.name?.trim() || "未入力"}`;
-  if (child.hours !== "" && child.hours != null) {
-    const n = parseFloat(child.hours);
-    if (!Number.isNaN(n)) {
-      line += `（${formatHoursValue(n)}h）`;
-    }
-  }
-  if (child.status?.trim()) {
-    line += `（${child.status.trim()}）`;
-  }
-  return line;
-};
-
-const childIsFilled = (c) =>
-  Boolean(c.name?.trim() || c.hours || c.status?.trim());
-
-const taskIsFilled = (task) =>
-  Boolean(
-    task.name?.trim() ||
-    task.hours ||
-    task.progress?.trim() ||
-    task.children?.some(childIsFilled),
-  );
+const MORNING_STORAGE_KEY = "dayTool.morning";
 
 export default function EveningTab() {
   const today = new Date().toISOString().slice(0, 10);
@@ -100,8 +36,9 @@ export default function EveningTab() {
   const [breakStart, setBreakStart] = useState(initial.breakStart ?? "13:00");
   const [breakEnd, setBreakEnd] = useState(initial.breakEnd ?? "14:00");
   const [isRemote, setIsRemote] = useState(initial.isRemote ?? false);
-  const [tasks, setTasks] = useState(
-    initial.tasks ?? [createEmptyTask(), createEmptyTask()],
+  const [groups, setGroups] = useState(initial.groups ?? [createEmptyPlanGroup()]);
+  const [meetings, setMeetings] = useState(
+    initial.meetings ?? [createEmptyMeeting()],
   );
   const [output, setOutput] = useState("");
 
@@ -113,9 +50,11 @@ export default function EveningTab() {
       breakStart,
       breakEnd,
       isRemote,
-      tasks,
+      groups,
+      meetings,
     });
-  }, [date, startTime, endTime, breakStart, breakEnd, isRemote, tasks]);
+  }, [date, startTime, endTime, breakStart, breakEnd, isRemote, groups, meetings]);
+
   const startTimeOptions = useMemo(() => getNearbyQuarterHourOptions(startTime), [startTime]);
   const endTimeOptions = useMemo(() => getNearbyQuarterHourOptions(endTime), [endTime]);
   const breakStartOptions = useMemo(
@@ -140,90 +79,38 @@ export default function EveningTab() {
 
   const workTime = formatHours(workMinutes);
 
-  const totalTasksHours = useMemo(
-    () => tasks.reduce((sum, task) => sum + getParentHoursValue(task), 0),
-    [tasks],
-  );
+  const totalHours = useMemo(() => sumPlanGroupsHours(groups), [groups]);
+  const meetingHours = useMemo(() => sumMeetingsHours(meetings), [meetings]);
+  const grandTotalHours = totalHours + meetingHours;
+  const isOverEightHours = grandTotalHours >= 8;
 
-  const isEightHours = Math.abs(totalTasksHours - 8) < 0.01;
+  const importFromMorning = () => {
+    const morning = loadState(MORNING_STORAGE_KEY, null);
+    const hasMorningContent =
+      morning?.groups?.some(planGroupIsFilled) ||
+      morning?.meetings?.some(meetingIsFilled);
 
-  const updateTask = (id, field, value) => {
-    setTasks((current) =>
-      current.map((task) => (task.id === id ? { ...task, [field]: value } : task))
-    );
-  };
+    if (!hasMorningContent) {
+      alert("朝の予定がまだ入力されていません。");
+      return;
+    }
 
-  const updateTaskHours = (id, value) => {
-    setTasks((current) =>
-      current.map((task) =>
-        task.id === id ? { ...task, hours: value, hoursManual: true } : task,
-      ),
-    );
-  };
+    if (!window.confirm("朝の予定を読み込み、現在の入力内容を上書きします。よろしいですか？")) {
+      return;
+    }
 
-  const resetTaskHoursToAuto = (id) => {
-    setTasks((current) =>
-      current.map((task) => {
-        if (task.id !== id) return task;
-        return applyAutoParentHours({ ...task, hoursManual: false });
-      }),
-    );
-  };
-
-  const updateChild = (taskId, childId, field, value) => {
-    setTasks((current) =>
-      current.map((task) => {
-        if (task.id !== taskId) return task;
-        const next = {
-          ...task,
-          children: task.children.map((c) =>
-            c.id === childId ? { ...c, [field]: value } : c,
-          ),
-        };
-        return applyAutoParentHours(next);
-      }),
-    );
-  };
-
-  const addChild = (taskId) => {
-    setTasks((current) =>
-      current.map((task) =>
-        task.id !== taskId
-          ? task
-          : applyAutoParentHours({
-              ...task,
-              children: [...task.children, createEmptyChild()],
-            }),
-      ),
-    );
-  };
-
-  const removeChild = (taskId, childId) => {
-    setTasks((current) =>
-      current.map((task) => {
-        if (task.id !== taskId) return task;
-        const next = task.children.filter((c) => c.id !== childId);
-        const updated = {
-          ...task,
-          children: next.length > 0 ? next : [createEmptyChild()],
-        };
-        return applyAutoParentHours(updated);
-      }),
-    );
-  };
-
-  const addTask = () => {
-    setTasks((current) => [...current, createEmptyTask()]);
-  };
-
-  const removeTask = (id) => {
-    setTasks((current) => current.filter((task) => task.id !== id));
+    setGroups(morning.groups);
+    setMeetings(morning.meetings);
   };
 
   const generateReport = () => {
-    const validTasks = tasks.filter(taskIsFilled);
-    if (validTasks.length === 0) {
-      alert("少なくとも1つの稼働内容を入力してください。");
+    const validGroups = groups
+      .filter(planGroupIsFilled)
+      .map((g) => ({ ...g, tasks: g.tasks.filter(planTaskIsFilled) }));
+    const validMeetings = meetings.filter(meetingIsFilled);
+
+    if (validGroups.length === 0 && validMeetings.length === 0) {
+      alert("少なくとも1つの作業結果またはMTGを入力してください。");
       return;
     }
 
@@ -251,16 +138,25 @@ export default function EveningTab() {
       lines.push("・勤務形態　在宅");
     }
 
-    lines.push("", "【内容】");
+    lines.push("", "■進んだところ", "【作業結果】");
 
-    validTasks.forEach((task) => {
-      const parentHours = getParentHoursValue(task);
-      const parentLine = `● ${task.name?.trim() || "未入力"}${formatParentHoursPart(parentHours)}${formatProgressPart(task.progress)}`;
-      lines.push(parentLine);
-      task.children.filter(childIsFilled).forEach((child) => {
-        lines.push(formatChildLine(child));
+    validGroups.forEach((group) => {
+      lines.push(`＜${group.name?.trim() || "未入力"}＞`);
+      group.tasks.forEach((task) => {
+        lines.push(`・${task.name?.trim() || "未入力"}`);
+        const detail = formatPlanTaskDetailLine(task);
+        if (detail) lines.push(detail);
+        const scope = formatPlanTaskScopeLine(task, "対応結果");
+        if (scope) lines.push(scope);
       });
     });
+
+    if (validMeetings.length > 0) {
+      lines.push("", "【MTG】");
+      validMeetings.forEach((m) => {
+        lines.push(`・${m.startTime}〜${m.endTime}　${m.name.trim()}`);
+      });
+    }
 
     setOutput(lines.join("\n"));
   };
@@ -280,227 +176,112 @@ export default function EveningTab() {
 
   return (
     <>
-      <div className="inputArea">
-        <section className="panel">
-          <div className="field-row">
-            <label htmlFor="report-date">日付</label>
-            <input
-              id="report-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
-          <div className="field-row">
-            <label htmlFor="start-time">開始</label>
-            <select
-              id="start-time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-            >
-              {startTimeOptions.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field-row">
-            <label htmlFor="end-time">終了</label>
-            <select id="end-time" value={endTime} onChange={(e) => setEndTime(e.target.value)}>
-              {endTimeOptions.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field-row">
-            <label htmlFor="break-start">休憩開始</label>
-            <select
-              id="break-start"
-              value={breakStart}
-              onChange={(e) => setBreakStart(e.target.value)}
-            >
-              {breakStartOptions.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field-row">
-            <label htmlFor="break-end">休憩終了</label>
-            <select id="break-end" value={breakEnd} onChange={(e) => setBreakEnd(e.target.value)}>
-              {breakEndOptions.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field-row note-row">
-            <label>実働時間</label>
-            <span>{workTime}h</span>
-          </div>
-          <div className="field-row">
-            <label htmlFor="is-remote">在宅</label>
-            <input
-              id="is-remote"
-              type="checkbox"
-              checked={isRemote}
-              onChange={(e) => setIsRemote(e.target.checked)}
-            />
-          </div>
-        </section>
-
-        <section className="panel">
-          <div id="tasks" className="tasks">
-            {tasks.map((task) => {
-              const childSum = sumChildHours(task.children);
-              return (
-                <div key={task.id} className="task">
-                  <div className="task-remove">
-                    <button
-                      type="button"
-                      onClick={() => removeTask(task.id)}
-                      aria-label="このブロックを削除"
-                    >
-                      ー
-                    </button>
-                  </div>
-                  <div className="task-row task-row-parent">
-                    <input
-                      type="text"
-                      className="task-name"
-                      placeholder="親タスク名（ex: 案件B）"
-                      value={task.name}
-                      onChange={(e) =>
-                        updateTask(task.id, "name", e.target.value)
-                      }
-                    />
-                    <div className="task-hours-wrap">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.25"
-                        className={`task-hours${!task.hoursManual && childSum > 0 ? " task-hours--auto" : ""}`}
-                        placeholder="親の時間(h)"
-                        title={
-                          !task.hoursManual && childSum > 0
-                            ? "子タスクの合計（自動）"
-                            : "親の時間を直接入力"
-                        }
-                        value={task.hours}
-                        onChange={(e) =>
-                          updateTaskHours(task.id, e.target.value)
-                        }
-                      />
-                      {task.hoursManual && childSum > 0 && (
-                        <button
-                          type="button"
-                          className="hours-reset-auto"
-                          onClick={() => resetTaskHoursToAuto(task.id)}
-                          title="子の合計に戻す"
-                        >
-                          自動
-                        </button>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      className="task-progress"
-                      placeholder="進捗（ex: 10P/57P）"
-                      value={task.progress}
-                      onChange={(e) =>
-                        updateTask(task.id, "progress", e.target.value)
-                      }
-                    />
-                  </div>
-                  <div className="task-children">
-                    {task.children.map((child) => (
-                      <div key={child.id} className="task-row task-row-child">
-                        <input
-                          type="text"
-                          className="task-name"
-                          placeholder="小タスク名（ex. ページA）"
-                          value={child.name}
-                          onChange={(e) =>
-                            updateChild(
-                              task.id,
-                              child.id,
-                              "name",
-                              e.target.value,
-                            )
-                          }
-                        />
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.25"
-                          className="task-hours"
-                          placeholder="時間(h)"
-                          value={child.hours}
-                          onChange={(e) =>
-                            updateChild(
-                              task.id,
-                              child.id,
-                              "hours",
-                              e.target.value,
-                            )
-                          }
-                        />
-                        <input
-                          type="text"
-                          className="task-status"
-                          placeholder="状況（ex: 完了）"
-                          value={child.status}
-                          onChange={(e) =>
-                            updateChild(
-                              task.id,
-                              child.id,
-                              "status",
-                              e.target.value,
-                            )
-                          }
-                        />
-                        <button
-                          type="button"
-                          className="child-remove"
-                          onClick={() => removeChild(task.id, child.id)}
-                          aria-label="子タスクを削除"
-                        >
-                          ー
-                        </button>
-                      </div>
-                    ))}
-                    <div className="secondary_add">
-                      <button
-                        type="button"
-                        className="secondary child-add"
-                        onClick={() => addChild(task.id)}
-                      >
-                        ＋
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="add_task">
-            <button type="button" className="secondary" onClick={addTask}>
-              タスクを追加
-            </button>
-          </div>
-          <div
-            className={`field-row note-row tasks-total${!isEightHours ? " tasks-total--warning" : ""}`}
+      <section className="panel">
+        <div className="field-row">
+          <label htmlFor="report-date">日付</label>
+          <input
+            id="report-date"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </div>
+        <div className="field-row">
+          <label htmlFor="start-time">開始</label>
+          <select
+            id="start-time"
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
           >
-            <label>タスク合計</label>
-            <span>{formatHoursValue(totalTasksHours)}h / 8h</span>
-          </div>
-        </section>
+            {startTimeOptions.map((time) => (
+              <option key={time} value={time}>
+                {time}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field-row">
+          <label htmlFor="end-time">終了</label>
+          <select id="end-time" value={endTime} onChange={(e) => setEndTime(e.target.value)}>
+            {endTimeOptions.map((time) => (
+              <option key={time} value={time}>
+                {time}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field-row">
+          <label htmlFor="break-start">休憩開始</label>
+          <select
+            id="break-start"
+            value={breakStart}
+            onChange={(e) => setBreakStart(e.target.value)}
+          >
+            {breakStartOptions.map((time) => (
+              <option key={time} value={time}>
+                {time}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field-row">
+          <label htmlFor="break-end">休憩終了</label>
+          <select id="break-end" value={breakEnd} onChange={(e) => setBreakEnd(e.target.value)}>
+            {breakEndOptions.map((time) => (
+              <option key={time} value={time}>
+                {time}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field-row note-row">
+          <label>実働時間</label>
+          <span>{workTime}h</span>
+        </div>
+        <div className="field-row">
+          <label htmlFor="is-remote">在宅</label>
+          <input
+            id="is-remote"
+            type="checkbox"
+            checked={isRemote}
+            onChange={(e) => setIsRemote(e.target.checked)}
+          />
+        </div>
+      </section>
+
+      <div className="add_task import-action">
+        <button type="button" className="secondary" onClick={importFromMorning}>
+          朝の予定を自動入力
+        </button>
       </div>
+
+      <GroupsPanel
+        groups={groups}
+        setGroups={setGroups}
+        taskPlaceholder="作業内容（ex: 提案資料作成）"
+        scopeLabel="対応結果"
+        scopePlaceholder="対応結果（ex: クライアント提出まで完了）"
+      />
+
+      <MeetingsPanel meetings={meetings} setMeetings={setMeetings} />
+
+      <section className="panel">
+        <div className="field-row note-row tasks-total">
+          <label>プロジェクト合計</label>
+          <span>{formatHoursValue(totalHours)}h</span>
+        </div>
+        <div className="field-row note-row tasks-total">
+          <label>MTG合計</label>
+          <span>{formatHoursValue(meetingHours)}h</span>
+        </div>
+        <div
+          className={`field-row note-row tasks-total${isOverEightHours ? " tasks-total--warning" : ""}`}
+        >
+          <label>合計</label>
+          <span>{formatHoursValue(grandTotalHours)}h</span>
+        </div>
+        <p className="panel-hint">※合計が8h以上になると赤字で表示されます</p>
+      </section>
 
       <section className="panel result">
         <div className="btns">

@@ -56,12 +56,6 @@ h1 {
   margin-bottom: 18px;
 }
 
-.inputArea {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 16px;
-}
-
 .result {
   .btns {
     display: flex;
@@ -77,6 +71,10 @@ h1 {
   margin-top: 24px;
   display: flex;
   justify-content: center;
+}
+
+.import-action {
+  margin-bottom: 18px;
 }
 
 .field-row {
@@ -166,50 +164,6 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
 
-  .task-row {
-    display: grid;
-    grid-template-columns: 1fr 120px 140px;
-    gap: 12px;
-    align-items: center;
-    input {
-      min-width: 0;
-    }
-  }
-
-  .task-hours-wrap {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    min-width: 0;
-
-    .task-hours {
-      flex: 1;
-      min-width: 0;
-    }
-  }
-
-  .task-hours--auto {
-    border-color: rgba(74, 157, 255, 0.45);
-    background: rgba(74, 157, 255, 0.08);
-  }
-
-  .hours-reset-auto {
-    flex-shrink: 0;
-    border-radius: 8px !important;
-    padding: 8px 10px !important;
-    font-size: 0.75rem !important;
-    font-weight: 600 !important;
-    background: rgba(74, 157, 255, 0.15) !important;
-    color: #9ec8ff !important;
-    border: 1px solid rgba(74, 157, 255, 0.35) !important;
-  }
-
-  .task-row-child {
-    grid-template-columns: 1fr 100px 100px 40px;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
   .task-remove {
     position: absolute;
     top: 50%;
@@ -232,22 +186,6 @@ button {
   }
 }
 
-.task-children {
-  margin-top: 14px;
-  padding-top: 12px;
-  padding-left: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  display: flex;
-  flex-direction: column;
-}
-
-.task-children-head {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.65);
-  margin-bottom: 8px;
-}
-
 .child-remove {
   border-radius: 10px !important;
   padding: 8px 0 !important;
@@ -267,18 +205,18 @@ button {
   padding: 4px 10px;
 }
 
-.morning-group {
+.plan-group {
   padding-top: 16px;
 }
 
-.morning-group-name {
+.plan-group-name {
   display: block;
   width: 100%;
   font-weight: 600;
   margin-bottom: 12px;
 }
 
-.morning-tasks {
+.plan-tasks {
   margin-top: 14px;
   padding-top: 12px;
   padding-left: 12px;
@@ -288,7 +226,7 @@ button {
   gap: 10px;
 }
 
-.morning-task {
+.plan-task {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -315,14 +253,14 @@ button {
   }
 }
 
-.morning-task-row1 {
+.plan-task-row1 {
   display: grid;
   grid-template-columns: 1fr 120px;
   gap: 8px;
   align-items: center;
 }
 
-.morning-task-row2 {
+.plan-task-row2 {
   display: grid;
   grid-template-columns: 190px 1fr;
   gap: 8px;
@@ -371,26 +309,17 @@ textarea {
 }
 
 @media (max-width: 720px) {
-  .field-row,
-  .task-row {
+  .field-row {
     grid-template-columns: 1fr;
   }
 
-  .task .task-row-child {
-    grid-template-columns: 1fr;
-  }
-
-  .task-row > * {
-    width: 100%;
-  }
-
-  .child-remove {
+  .meeting-row .child-remove {
     width: 100% !important;
     max-width: none;
   }
 
-  .morning-task-row1,
-  .morning-task-row2,
+  .plan-task-row1,
+  .plan-task-row2,
   .meeting-row {
     grid-template-columns: 1fr;
   }
