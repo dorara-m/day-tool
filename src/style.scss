@@ -303,6 +303,24 @@ button {
   }
 }
 
+.breaks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.break-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr 40px;
+  gap: 8px;
+  align-items: center;
+
+  span {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.65);
+  }
+}
+
 textarea {
   min-height: 220px;
   resize: vertical;
@@ -313,14 +331,16 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .meeting-row .child-remove {
+  .meeting-row .child-remove,
+  .break-row .child-remove {
     width: 100% !important;
     max-width: none;
   }
 
   .plan-task-row1,
   .plan-task-row2,
-  .meeting-row {
+  .meeting-row,
+  .break-row {
     grid-template-columns: 1fr;
   }
 

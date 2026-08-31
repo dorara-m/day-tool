@@ -27,14 +27,19 @@ import MeetingsPanel from "./MeetingsPanel";
 const STORAGE_KEY = "dayTool.evening";
 const MORNING_STORAGE_KEY = "dayTool.morning";
 
+const createEmptyBreak = () => ({
+  id: crypto.randomUUID(),
+  start: "13:00",
+  end: "14:00",
+});
+
 export default function EveningTab() {
   const today = new Date().toISOString().slice(0, 10);
   const [initial] = useState(() => loadState(STORAGE_KEY, {}));
   const [date, setDate] = useState(initial.date ?? today);
   const [startTime, setStartTime] = useState(initial.startTime ?? "10:00");
   const [endTime, setEndTime] = useState(initial.endTime ?? "19:00");
-  const [breakStart, setBreakStart] = useState(initial.breakStart ?? "13:00");
-  const [breakEnd, setBreakEnd] = useState(initial.breakEnd ?? "14:00");
+  const [breaks, setBreaks] = useState(initial.breaks ?? [createEmptyBreak()]);
   const [isRemote, setIsRemote] = useState(initial.isRemote ?? false);
   const [groups, setGroups] = useState(initial.groups ?? [createEmptyPlanGroup()]);
   const [meetings, setMeetings] = useState(
@@ -47,21 +52,31 @@ export default function EveningTab() {
       date,
       startTime,
       endTime,
-      breakStart,
-      breakEnd,
+      breaks,
       isRemote,
       groups,
       meetings,
     });
-  }, [date, startTime, endTime, breakStart, breakEnd, isRemote, groups, meetings]);
+  }, [date, startTime, endTime, breaks, isRemote, groups, meetings]);
 
   const startTimeOptions = useMemo(() => getNearbyQuarterHourOptions(startTime), [startTime]);
   const endTimeOptions = useMemo(() => getNearbyQuarterHourOptions(endTime), [endTime]);
-  const breakStartOptions = useMemo(
-    () => getNearbyQuarterHourOptions(breakStart),
-    [breakStart],
+
+  const validBreaks = useMemo(
+    () =>
+      breaks.filter((b) => {
+        const s = parseTime(b.start);
+        const e = parseTime(b.end);
+        return s != null && e != null && e > s;
+      }),
+    [breaks],
   );
-  const breakEndOptions = useMemo(() => getNearbyQuarterHourOptions(breakEnd), [breakEnd]);
+
+  const breaksMinutes = useMemo(
+    () =>
+      validBreaks.reduce((sum, b) => sum + (parseTime(b.end) - parseTime(b.start)), 0),
+    [validBreaks],
+  );
 
   const workMinutes = useMemo(() => {
     const start = parseTime(startTime);
@@ -69,15 +84,25 @@ export default function EveningTab() {
     if (start == null || end == null) return 0;
     let total = end - start;
     if (total < 0) total = 0;
-    const breakStartMin = parseTime(breakStart);
-    const breakEndMin = parseTime(breakEnd);
-    if (breakStartMin != null && breakEndMin != null && breakEndMin > breakStartMin) {
-      total -= breakEndMin - breakStartMin;
-    }
+    total -= breaksMinutes;
     return Math.max(total, 0);
-  }, [startTime, endTime, breakStart, breakEnd]);
+  }, [startTime, endTime, breaksMinutes]);
 
   const workTime = formatHours(workMinutes);
+
+  const updateBreak = (id, field, value) => {
+    setBreaks((current) =>
+      current.map((b) => (b.id === id ? { ...b, [field]: value } : b)),
+    );
+  };
+
+  const addBreak = () => {
+    setBreaks((current) => [...current, createEmptyBreak()]);
+  };
+
+  const removeBreak = (id) => {
+    setBreaks((current) => current.filter((b) => b.id !== id));
+  };
 
   const totalHours = useMemo(() => sumPlanGroupsHours(groups), [groups]);
   const meetingHours = useMemo(() => sumMeetingsHours(meetings), [meetings]);
@@ -127,18 +152,16 @@ export default function EveningTab() {
       `・稼働時間　${startTime}～${endTime}（実働${actualWork}時間）`,
     ];
 
-    const breakStartMin = parseTime(breakStart);
-    const breakEndMin = parseTime(breakEnd);
-    if (breakStart && breakEnd && breakEndMin > breakStartMin) {
-      const breakMins = breakEndMin - breakStartMin;
-      const breakH = formatHoursForReport(breakMins);
-      lines.push(`・休憩時間　${breakStart}～${breakEnd}（${breakH}h）`);
+    if (validBreaks.length > 0) {
+      const rangesText = validBreaks.map((b) => `${b.start}～${b.end}`).join("、");
+      const breakH = formatHoursForReport(breaksMinutes);
+      lines.push(`・休憩時間　${rangesText}（${breakH}h）`);
     }
     if (isRemote) {
       lines.push("・勤務形態　在宅");
     }
 
-    lines.push("", "■進んだところ", "【作業結果】");
+    lines.push("", "【作業結果】");
 
     validGroups.forEach((group) => {
       lines.push(`＜${group.name?.trim() || "未入力"}＞`);
@@ -211,28 +234,49 @@ export default function EveningTab() {
           </select>
         </div>
         <div className="field-row">
-          <label htmlFor="break-start">休憩開始</label>
-          <select
-            id="break-start"
-            value={breakStart}
-            onChange={(e) => setBreakStart(e.target.value)}
-          >
-            {breakStartOptions.map((time) => (
-              <option key={time} value={time}>
-                {time}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="field-row">
-          <label htmlFor="break-end">休憩終了</label>
-          <select id="break-end" value={breakEnd} onChange={(e) => setBreakEnd(e.target.value)}>
-            {breakEndOptions.map((time) => (
-              <option key={time} value={time}>
-                {time}
-              </option>
-            ))}
-          </select>
+          <label>休憩</label>
+          <div className="breaks-list">
+            {breaks.map((b) => {
+              const startOptions = getNearbyQuarterHourOptions(b.start);
+              const endOptions = getNearbyQuarterHourOptions(b.end);
+              return (
+                <div key={b.id} className="break-row">
+                  <select
+                    value={b.start}
+                    onChange={(e) => updateBreak(b.id, "start", e.target.value)}
+                  >
+                    {startOptions.map((time) => (
+                      <option key={time} value={time}>
+                        {time}
+                      </option>
+                    ))}
+                  </select>
+                  <span>〜</span>
+                  <select
+                    value={b.end}
+                    onChange={(e) => updateBreak(b.id, "end", e.target.value)}
+                  >
+                    {endOptions.map((time) => (
+                      <option key={time} value={time}>
+                        {time}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="child-remove"
+                    onClick={() => removeBreak(b.id)}
+                    aria-label="休憩を削除"
+                  >
+                    ー
+                  </button>
+                </div>
+              );
+            })}
+            <button type="button" className="secondary child-add" onClick={addBreak}>
+              ＋
+            </button>
+          </div>
         </div>
         <div className="field-row note-row">
           <label>実働時間</label>
