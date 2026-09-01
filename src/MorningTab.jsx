@@ -87,6 +87,7 @@ export default function MorningTab() {
       <GroupsPanel
         groups={groups}
         setGroups={setGroups}
+        hint="優先度の高い案件から入力してください"
         scopeLabel="対応範囲"
         scopePlaceholder="対応範囲（ex: 先方報告まで）"
       />

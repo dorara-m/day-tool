@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createEmptyPlanTask, createEmptyPlanGroup } from "./planUtils";
 
 /**
@@ -7,12 +8,29 @@ import { createEmptyPlanTask, createEmptyPlanGroup } from "./planUtils";
 export default function GroupsPanel({
   groups,
   setGroups,
+  hint,
   groupPlaceholder = "プロジェクト名（ex: 案件A）",
   taskPlaceholder = "作業内容（ex: 追加FB対応）",
   scopeLabel = "対応範囲",
   scopePlaceholder = "対応範囲（ex: 先方報告まで）",
   addGroupLabel = "プロジェクトを追加",
 }) {
+  const [draggedId, setDraggedId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
+
+  const moveGroup = (draggedGroupId, targetGroupId) => {
+    if (draggedGroupId == null || draggedGroupId === targetGroupId) return;
+    setGroups((current) => {
+      const fromIndex = current.findIndex((g) => g.id === draggedGroupId);
+      const toIndex = current.findIndex((g) => g.id === targetGroupId);
+      if (fromIndex === -1 || toIndex === -1) return current;
+      const next = [...current];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  };
+
   const updateGroup = (groupId, field, value) => {
     setGroups((current) =>
       current.map((g) => (g.id === groupId ? { ...g, [field]: value } : g)),
@@ -64,9 +82,23 @@ export default function GroupsPanel({
 
   return (
     <section className="panel">
+      {hint && <p className="panel-hint">{hint}</p>}
       <div id="groups" className="tasks">
         {groups.map((group) => (
-          <div key={group.id} className="task plan-group">
+          <div
+            key={group.id}
+            className={`task plan-group${draggedId === group.id ? " plan-group--dragging" : ""}${dragOverId === group.id ? " plan-group--drag-over" : ""}`}
+            onDragOver={(e) => e.preventDefault()}
+            onDragEnter={() => setDragOverId(group.id)}
+            onDragLeave={() =>
+              setDragOverId((current) => (current === group.id ? null : current))
+            }
+            onDrop={(e) => {
+              e.preventDefault();
+              moveGroup(draggedId, group.id);
+              setDragOverId(null);
+            }}
+          >
             <div className="task-remove">
               <button
                 type="button"
@@ -76,13 +108,28 @@ export default function GroupsPanel({
                 ー
               </button>
             </div>
-            <input
-              type="text"
-              className="task-name plan-group-name"
-              placeholder={groupPlaceholder}
-              value={group.name}
-              onChange={(e) => updateGroup(group.id, "name", e.target.value)}
-            />
+            <div className="plan-group-header">
+              <span
+                className="drag-handle"
+                draggable
+                onDragStart={() => setDraggedId(group.id)}
+                onDragEnd={() => {
+                  setDraggedId(null);
+                  setDragOverId(null);
+                }}
+                aria-label="ドラッグして並び替え"
+                title="ドラッグして並び替え"
+              >
+                ⠿
+              </span>
+              <input
+                type="text"
+                className="task-name plan-group-name"
+                placeholder={groupPlaceholder}
+                value={group.name}
+                onChange={(e) => updateGroup(group.id, "name", e.target.value)}
+              />
+            </div>
             <div className="plan-tasks">
               {group.tasks.map((task) => (
                 <div key={task.id} className="plan-task">

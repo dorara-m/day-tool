@@ -254,13 +254,43 @@ button {
 
 .plan-group {
   padding-top: 16px;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+
+.plan-group--dragging {
+  opacity: 0.4;
+}
+
+.plan-group--drag-over {
+  border-color: #4a9dff;
+}
+
+.plan-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.drag-handle {
+  flex-shrink: 0;
+  cursor: grab;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.4);
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
 }
 
 .plan-group-name {
   display: block;
   width: 100%;
+  flex: 1;
   font-weight: 600;
-  margin-bottom: 12px;
+  margin-bottom: 0;
 }
 
 .plan-tasks {
