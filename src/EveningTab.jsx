@@ -108,7 +108,9 @@ export default function EveningTab() {
   const totalHours = useMemo(() => sumPlanGroupsHours(groups), [groups]);
   const meetingHours = useMemo(() => sumMeetingsHours(meetings), [meetings]);
   const grandTotalHours = totalHours + meetingHours;
-  const isOverEightHours = grandTotalHours >= 8;
+
+  const workHours = workMinutes / 60;
+  const hoursMatch = Math.abs(workHours - grandTotalHours) < 0.01;
 
   const importFromMorning = () => {
     const morning = loadState(MORNING_STORAGE_KEY, null);
@@ -311,21 +313,28 @@ export default function EveningTab() {
       <MeetingsPanel meetings={meetings} setMeetings={setMeetings} />
 
       <section className="panel">
-        <div className="field-row note-row tasks-total">
-          <label>プロジェクト合計</label>
-          <span>{formatHoursValue(totalHours)}h</span>
+        <div className="hours-compare">
+          <div className="hours-compare-item">
+            <span className="hours-compare-label">プロジェクト合計</span>
+            <span className="hours-compare-value">{formatHoursValue(totalHours)}h</span>
+          </div>
+          <div className="hours-compare-item">
+            <span className="hours-compare-label">MTG合計</span>
+            <span className="hours-compare-value">{formatHoursValue(meetingHours)}h</span>
+          </div>
+          <div className="hours-compare-item">
+            <span className="hours-compare-label">合計</span>
+            <span className={`hours-compare-value${hoursMatch ? " hours-compare-value--match" : ""}`}>
+              {formatHoursValue(grandTotalHours)}h
+            </span>
+          </div>
+          <div className="hours-compare-item">
+            <span className="hours-compare-label">実働時間</span>
+            <span className={`hours-compare-value${hoursMatch ? " hours-compare-value--match" : ""}`}>
+              {workTime}h
+            </span>
+          </div>
         </div>
-        <div className="field-row note-row tasks-total">
-          <label>MTG合計</label>
-          <span>{formatHoursValue(meetingHours)}h</span>
-        </div>
-        <div
-          className={`field-row note-row tasks-total${isOverEightHours ? " tasks-total--warning" : ""}`}
-        >
-          <label>合計</label>
-          <span>{formatHoursValue(grandTotalHours)}h</span>
-        </div>
-        <p className="panel-hint">※合計が8h以上になると赤字で表示されます</p>
       </section>
 
       <section className="panel result">

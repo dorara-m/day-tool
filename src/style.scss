@@ -139,6 +139,40 @@ textarea {
   font-weight: 600;
 }
 
+.hours-compare {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.hours-compare-item {
+  flex: 1;
+  min-width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.hours-compare-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.hours-compare-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.hours-compare-value--match {
+  color: #ff6b6b;
+}
+
 button {
   cursor: pointer;
   border: none;
