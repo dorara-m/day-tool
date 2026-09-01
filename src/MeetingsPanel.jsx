@@ -1,5 +1,22 @@
 import { createEmptyMeeting } from "./planUtils";
-import { getNearbyQuarterHourOptions } from "./utils";
+import {
+  QUARTER_HOUR_OPTIONS,
+  formatTime,
+  getNearbyQuarterHourOptions,
+  getQuarterHourOptionsInRange,
+  parseTime,
+} from "./utils";
+
+const MEETING_TIME_OPTIONS = getQuarterHourOptionsInRange("10:00", "19:00");
+const DEFAULT_MEETING_DURATION = 15;
+const LAST_QUARTER_HOUR_MINUTES = 23 * 60 + 45; // 23:45（1日の最終枠）
+
+/** 通常は10:00〜19:00、境界付近の値のときはその前後2時間も候補に含める */
+const getMeetingTimeOptions = (value) => {
+  const nearby = getNearbyQuarterHourOptions(value, 120);
+  const merged = new Set([...MEETING_TIME_OPTIONS, ...nearby]);
+  return QUARTER_HOUR_OPTIONS.filter((time) => merged.has(time));
+};
 
 /** MTGの時間帯＋名称の入力パネル。朝タブ・夕タブで共用。 */
 export default function MeetingsPanel({
@@ -11,6 +28,20 @@ export default function MeetingsPanel({
   const updateMeeting = (meetingId, field, value) => {
     setMeetings((current) =>
       current.map((m) => (m.id === meetingId ? { ...m, [field]: value } : m)),
+    );
+  };
+
+  const updateMeetingStart = (meetingId, value) => {
+    setMeetings((current) =>
+      current.map((m) => {
+        if (m.id !== meetingId) return m;
+        const startMin = parseTime(value);
+        const endTime =
+          startMin != null
+            ? formatTime(Math.min(startMin + DEFAULT_MEETING_DURATION, LAST_QUARTER_HOUR_MINUTES))
+            : m.endTime;
+        return { ...m, startTime: value, endTime };
+      }),
     );
   };
 
@@ -26,15 +57,13 @@ export default function MeetingsPanel({
     <section className="panel">
       <div id="meetings" className="tasks">
         {meetings.map((meeting) => {
-          const startOptions = getNearbyQuarterHourOptions(meeting.startTime);
-          const endOptions = getNearbyQuarterHourOptions(meeting.endTime);
+          const startOptions = getMeetingTimeOptions(meeting.startTime);
+          const endOptions = getMeetingTimeOptions(meeting.endTime);
           return (
             <div key={meeting.id} className="meeting-row">
               <select
                 value={meeting.startTime}
-                onChange={(e) =>
-                  updateMeeting(meeting.id, "startTime", e.target.value)
-                }
+                onChange={(e) => updateMeetingStart(meeting.id, e.target.value)}
               >
                 {startOptions.map((time) => (
                   <option key={time} value={time}>

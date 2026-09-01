@@ -26,6 +26,24 @@ export const getNearbyQuarterHourOptions = (time, spanMinutes = 120) => {
   });
 };
 
+export const getQuarterHourOptionsInRange = (startTime, endTime) => {
+  const min = parseTime(startTime);
+  const max = parseTime(endTime);
+  return QUARTER_HOUR_OPTIONS.filter((option) => {
+    const mins = parseTime(option);
+    return mins != null && mins >= min && mins <= max;
+  });
+};
+
+/** 分（0〜1439）→ "HH:MM" */
+export const formatTime = (totalMinutes) => {
+  const hour = Math.floor(totalMinutes / 60)
+    .toString()
+    .padStart(2, "0");
+  const minute = (totalMinutes % 60).toString().padStart(2, "0");
+  return `${hour}:${minute}`;
+};
+
 export const formatHours = (minutes) => {
   return (minutes / 60).toFixed(2).replace(/\.00$/, "");
 };

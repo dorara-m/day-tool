@@ -17,8 +17,8 @@ export const createEmptyPlanGroup = () => ({
 
 export const createEmptyMeeting = () => ({
   id: crypto.randomUUID(),
-  startTime: "10:00",
-  endTime: "10:15",
+  startTime: "10:30",
+  endTime: "10:45",
   name: "",
 });
 
