@@ -23,11 +23,12 @@ export default function MorningTab() {
   const [meetings, setMeetings] = useState(
     initial.meetings ?? [createEmptyMeeting()],
   );
+  const [comment, setComment] = useState(initial.comment ?? "");
   const [output, setOutput] = useState("");
 
   useEffect(() => {
-    saveState(STORAGE_KEY, { groups, meetings });
-  }, [groups, meetings]);
+    saveState(STORAGE_KEY, { groups, meetings, comment });
+  }, [groups, meetings, comment]);
 
   const totalHours = useMemo(() => sumPlanGroupsHours(groups), [groups]);
   const meetingHours = useMemo(() => sumMeetingsHours(meetings), [meetings]);
@@ -64,6 +65,10 @@ export default function MorningTab() {
       validMeetings.forEach((m) => {
         lines.push(`・${m.startTime}〜${m.endTime}　${m.name.trim()}`);
       });
+    }
+
+    if (comment.trim()) {
+      lines.push("", "【共有】", comment.trim());
     }
 
     setOutput(lines.join("\n"));
@@ -112,6 +117,15 @@ export default function MorningTab() {
           </div>
         </div>
         <p className="panel-hint">※合計が8h以上になると赤字で表示されます</p>
+      </section>
+
+      <section className="panel comment">
+        <textarea
+          id="morning-comment"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="ひとことコメント（任意）"
+        />
       </section>
 
       <section className="panel result">

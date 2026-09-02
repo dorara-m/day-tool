@@ -404,6 +404,10 @@ textarea {
   resize: vertical;
 }
 
+.comment textarea {
+  min-height: 70px;
+}
+
 @media (max-width: 720px) {
   .field-row {
     grid-template-columns: 1fr;

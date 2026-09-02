@@ -46,6 +46,7 @@ export default function EveningTab() {
   const [meetings, setMeetings] = useState(
     initial.meetings ?? [createEmptyMeeting()],
   );
+  const [comment, setComment] = useState(initial.comment ?? "");
   const [output, setOutput] = useState("");
 
   useEffect(() => {
@@ -57,8 +58,9 @@ export default function EveningTab() {
       isRemote,
       groups,
       meetings,
+      comment,
     });
-  }, [date, startTime, endTime, breaks, isRemote, groups, meetings]);
+  }, [date, startTime, endTime, breaks, isRemote, groups, meetings, comment]);
 
   const startTimeOptions = useMemo(() => getNearbyQuarterHourOptions(startTime), [startTime]);
   const endTimeOptions = useMemo(() => getNearbyQuarterHourOptions(endTime), [endTime]);
@@ -182,6 +184,10 @@ export default function EveningTab() {
       validMeetings.forEach((m) => {
         lines.push(`・${m.startTime}〜${m.endTime}　${m.name.trim()}`);
       });
+    }
+
+    if (comment.trim()) {
+      lines.push("", "【共有】", comment.trim());
     }
 
     setOutput(lines.join("\n"));
@@ -335,6 +341,15 @@ export default function EveningTab() {
             </span>
           </div>
         </div>
+      </section>
+
+      <section className="panel comment">
+        <textarea
+          id="evening-comment"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="ひとことコメント（任意）"
+        />
       </section>
 
       <section className="panel result">
