@@ -95,19 +95,21 @@ export default function MorningTab() {
       <MeetingsPanel meetings={meetings} setMeetings={setMeetings} />
 
       <section className="panel">
-        <div className="field-row note-row tasks-total">
-          <label>プロジェクト合計</label>
-          <span>{formatHoursValue(totalHours)}h</span>
-        </div>
-        <div className="field-row note-row tasks-total">
-          <label>MTG合計</label>
-          <span>{formatHoursValue(meetingHours)}h</span>
-        </div>
-        <div
-          className={`field-row note-row tasks-total${isOverEightHours ? " tasks-total--warning" : ""}`}
-        >
-          <label>合計</label>
-          <span>{formatHoursValue(grandTotalHours)}h</span>
+        <div className="hours-compare">
+          <div className="hours-compare-item">
+            <span className="hours-compare-label">プロジェクト合計</span>
+            <span className="hours-compare-value">{formatHoursValue(totalHours)}h</span>
+          </div>
+          <div className="hours-compare-item">
+            <span className="hours-compare-label">MTG合計</span>
+            <span className="hours-compare-value">{formatHoursValue(meetingHours)}h</span>
+          </div>
+          <div className="hours-compare-item">
+            <span className="hours-compare-label">合計</span>
+            <span className={`hours-compare-value${isOverEightHours ? " hours-compare-value--warning" : ""}`}>
+              {formatHoursValue(grandTotalHours)}h
+            </span>
+          </div>
         </div>
         <p className="panel-hint">※合計が8h以上になると赤字で表示されます</p>
       </section>
