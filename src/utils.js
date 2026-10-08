@@ -56,6 +56,15 @@ export const formatHoursForReport = (minutes) => {
   return h.toFixed(2).replace(/\.?0+$/, "");
 };
 
+/** ローカルタイムでの今日の日付（YYYY-MM-DD） */
+export const getTodayString = () => {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
 /** YYYY-MM-DD → 05月18日（先頭ゼロ付き） */
 export const formatReportDateLabel = (dateString) => {
   const [, month, day] = dateString.split("-");

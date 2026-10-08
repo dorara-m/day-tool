@@ -5,6 +5,7 @@ import {
   formatHoursValue,
   formatReportDateLabel,
   getNearbyQuarterHourOptions,
+  getTodayString,
   getWeekday,
   loadState,
   parseTime,
@@ -35,9 +36,9 @@ const createEmptyBreak = () => ({
 });
 
 export default function EveningTab() {
-  const today = new Date().toISOString().slice(0, 10);
   const [initial] = useState(() => loadState(STORAGE_KEY, {}));
-  const [date, setDate] = useState(initial.date ?? today);
+  // タブを開くたびにマウントされるので、日付は常に今日で初期化する
+  const [date, setDate] = useState(getTodayString);
   const [startTime, setStartTime] = useState(initial.startTime ?? "10:00");
   const [endTime, setEndTime] = useState(initial.endTime ?? "19:00");
   const [breaks, setBreaks] = useState(initial.breaks ?? [createEmptyBreak()]);
@@ -141,6 +142,16 @@ export default function EveningTab() {
 
     if (validGroups.length === 0 && validMeetings.length === 0) {
       alert("少なくとも1つの作業結果またはMTGを入力してください。");
+      return;
+    }
+
+    const today = getTodayString();
+    if (
+      date !== today &&
+      !window.confirm(
+        `日付が今日（${formatReportDateLabel(today)}）ではなく ${formatReportDateLabel(date)}(${getWeekday(date)}) になっています。このまま生成しますか？`,
+      )
+    ) {
       return;
     }
 
